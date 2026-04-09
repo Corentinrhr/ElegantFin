@@ -1,9 +1,8 @@
 name: Generate Subset Font
 
 on:
-  # Run this workflow after the CSS minification workflow completes
   workflow_run:
-    workflows: ["Auto-Minify Theme CSS"]
+    workflows: ["Auto-Minify Theme CSS"] # must match upstream workflow name
     types:
       - completed
   workflow_dispatch: 
@@ -13,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
-      contents: write
+      contents: write # required for push
 
     steps:
       - name: Checkout Repository
@@ -35,39 +34,33 @@ jobs:
           import os
           import subprocess
           
-          # Read the local CSS file
           css_path = "Theme/ElegantFin-jellyfin-theme-build-latest-minified.css"
           with open(css_path, "r", encoding="utf-8") as f:
               css_content = f.read()
               
-          # Extract unicode values from CSS (e.g. content: "\e88e")
           unicodes = set(re.findall(r'content\s*:\s*["\']\\([a-fA-F0-9]{4})["\']', css_content))
           unicodes_arg = ",".join([f"U+{u.upper()}" for u in unicodes])
           
-          # Extract text ligatures if any
           words = set(re.findall(r'content\s*:\s*["\']([a-z_]{3,})["\']', css_content))
           
-          # Add core Jellyfin icons to avoid breaking the UI
-          core_jellyfin_icons = [
+          # keep core icons to avoid UI breakage
+          words.update([
               "home", "settings", "search", "cast", "menu", "close", "play_arrow", 
               "pause", "favorite", "star", "check", "info", "account_circle", 
               "more_vert", "arrow_forward", "arrow_back", "logout", "person", "edit",
               "delete", "refresh", "subtitles", "folder", "sort", "filter_list"
-          ]
-          words.update(core_jellyfin_icons)
+          ])
           
-          # pyftsubset expects a string of unique characters, not comma-separated words
-          unique_chars = set("".join(words))
-          text_arg = "".join(unique_chars)
+          # pyftsubset expects a flat char set
+          text_arg = "".join(set("".join(words)))
           
-          # Download the base font
-          font_url = "https://fonts.gstatic.com/s/materialsymbolsrounded/v267/sykg-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190Fjzag.woff2"
-          urllib.request.urlretrieve(font_url, "base.woff2")
+          urllib.request.urlretrieve(
+              "https://fonts.gstatic.com/s/materialsymbolsrounded/v325/sykO-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190FjpZIvLgyidOK7BDB_Qb9vUdV6_gjDK-P3JuEXX.woff2",
+              "base.woff2"
+          )
           
-          # Ensure the output directory exists
           os.makedirs("Theme/assets/font", exist_ok=True)
           
-          # Subset the font with optimized flags
           cmd = [
               "pyftsubset", "base.woff2",
               "--flavor=woff2",
@@ -75,11 +68,13 @@ jobs:
               "--layout-features=liga,clig,rlig",
               "--no-layout-closure"
           ]
-          if unicodes_arg: cmd.append(f"--unicodes={unicodes_arg}")
-          if text_arg: cmd.append(f"--text={text_arg}")
+          
+          if unicodes_arg:
+              cmd.append(f"--unicodes={unicodes_arg}")
+          if text_arg:
+              cmd.append(f"--text={text_arg}")
           
           subprocess.run(cmd, check=True)
-          print("Subsetting completed successfully!")
 
       - name: Commit and Push changes
         uses: stefanzweifel/git-auto-commit-action@v5
