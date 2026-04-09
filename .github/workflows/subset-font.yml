@@ -1,12 +1,11 @@
 name: Generate Subset Font
 
 on:
-  # Trigger when the CSS file changes
-  push:
-    paths:
-      - 'Theme/ElegantFin-jellyfin-theme-build-latest-minified.css'
-  # Allow manual trigger from the Actions tab
-  workflow_dispatch: 
+  workflow_run:
+    workflows: ["Auto-Minify Theme CSS"]
+    types:
+      - completed
+  workflow_dispatch:
 
 jobs:
   build:
@@ -57,7 +56,7 @@ jobs:
           text_arg = ",".join(words)
           
           # Download the base font
-          font_url = "https://fonts.gstatic.com/s/materialsymbolsrounded/v325/sykO-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190FjpZIvLgyidOK7BDB_Qb9vUdV6_gjDK-P3JuEXX.woff2"
+          font_url = "https://fonts.gstatic.com/s/materialsymbolsrounded/v267/sykg-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190Fjzag.woff2"
           urllib.request.urlretrieve(font_url, "base.woff2")
           
           # Make sure the output directory exists
