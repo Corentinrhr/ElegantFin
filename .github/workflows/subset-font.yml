@@ -71,8 +71,7 @@ jobs:
               "star", "star_outline", "star_border",
               "favorite", "favorite_border",
               "check", "check_circle",
-              "add", "remove", "edit", "delete",
-              "info", "info_outline",
+              "add", "remove", "edit", "delete","info",
               "help", "help_outline",
               "warning", "error", "error_outline", "cancel", "block",
               "queue_music", "playlist_add", "playlist_play",
@@ -123,7 +122,7 @@ jobs:
           print(f"Resolved {resolved}/{len(all_icon_names)} icon names to codepoints.")
           print(f"Total codepoints to subset: {len(unicode_set)}")
 
-          letter_range = "U+0061-U+007A,U+005F"
+          letter_range = "U+0061-007A,U+005F"
           icon_unicodes = ",".join(f"U+{u}" for u in sorted(unicode_set))
           unicodes_arg = f"{icon_unicodes},{letter_range}"
 
