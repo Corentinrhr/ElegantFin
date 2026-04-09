@@ -2,17 +2,17 @@ name: Generate Subset Font
 
 on:
   workflow_run:
-    workflows: ["Auto-Minify Theme CSS"] # must match upstream workflow name
+    workflows: ["Auto-Minify Theme CSS"]
     types:
       - completed
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
-      contents: write # required for push
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -33,51 +33,119 @@ jobs:
           import re
           import os
           import subprocess
-          
+
           css_path = "Theme/ElegantFin-jellyfin-theme-build-latest-minified.css"
           with open(css_path, "r", encoding="utf-8") as f:
               css_content = f.read()
-              
-          unicodes = set(re.findall(r'content\s*:\s*["\']\\([a-fA-F0-9]{4})["\']', css_content))
-          unicodes_arg = ",".join([f"U+{u.upper()}" for u in unicodes])
-          
-          words = set(re.findall(r'content\s*:\s*["\']([a-z_]{3,})["\']', css_content))
-          
-          # keep core icons to avoid UI breakage
-          words.update([
-              "home", "settings", "search", "cast", "menu", "close", "play_arrow", 
-              "pause", "favorite", "star", "check", "info", "account_circle", 
-              "more_vert", "arrow_forward", "arrow_back", "logout", "person", "edit",
-              "delete", "refresh", "subtitles", "folder", "sort", "filter_list",
-              "volume_off", "volume_up", "volume_down", "volume_mute", 
-              "skip_next", "skip_previous", "fast_forward", "fast_rewind",
-              "fullscreen", "fullscreen_exit", "chevron_left", "chevron_right",
-              "keyboard_arrow_left", "keyboard_arrow_right", "closed_caption"
-          ])
-          
-          # pyftsubset expects a flat char set
-          text_arg = "".join(set("".join(words)))
-          
+
+          unicode_set = set(
+              re.findall(r'content\s*:\s*["\']\\([a-fA-F0-9]{4,5})["\']', css_content)
+          )
+
+          css_icon_names = set(
+              re.findall(r'content\s*:\s*["\']([a-z][a-z0-9_]{2,})["\']', css_content)
+          )
+
+          jellyfin_ui_icons = {
+              "home", "menu", "close", "search",
+              "arrow_back", "arrow_forward",
+              "chevron_left", "chevron_right",
+              "expand_more", "expand_less",
+              "more_vert", "more_horiz",
+              "person", "account_circle", "logout",
+              "settings", "manage_accounts",
+              "play_arrow", "pause", "stop",
+              "replay", "replay_10", "forward_10",
+              "skip_next", "skip_previous",
+              "fast_forward", "fast_rewind",
+              "shuffle", "repeat", "repeat_one",
+              "volume_up", "volume_down", "volume_off", "volume_mute",
+              "fullscreen", "fullscreen_exit",
+              "picture_in_picture", "picture_in_picture_alt",
+              "subtitles", "closed_caption", "closed_caption_off",
+              "cast", "cast_connected",
+              "speed", "hd", "sd",
+              "folder", "folder_open",
+              "video_library", "photo_library", "library_music",
+              "music_note", "movie", "live_tv", "tv", "book",
+              "star", "star_outline", "star_border",
+              "favorite", "favorite_border",
+              "check", "check_circle",
+              "add", "remove", "edit", "delete",
+              "info", "info_outline",
+              "help", "help_outline",
+              "warning", "error", "error_outline", "cancel", "block",
+              "queue_music", "playlist_add", "playlist_play",
+              "queue_play_next", "add_to_queue",
+              "download", "download_done", "upload", "sync",
+              "refresh", "filter_list", "sort",
+              "view_list", "view_module", "view_comfy",
+              "notifications", "notification_important",
+              "schedule", "history", "timer",
+              "visibility", "visibility_off",
+              "lock", "lock_open",
+              "done", "done_all",
+              "radio_button_unchecked", "radio_button_checked",
+              "fiber_manual_record",
+          }
+
+          all_icon_names = css_icon_names | jellyfin_ui_icons
+
+          # This is the authoritative codepoints file for Material Symbols Rounded.
+          codepoints_url = (
+              "https://raw.githubusercontent.com/google/material-design-icons"
+              "/master/variablefont/"
+              "MaterialSymbolsRounded%5BFILL%2CGRAD%2Copsz%2Cwght%5D.codepoints"
+          )
+          name_to_cp = {}
+          try:
+              with urllib.request.urlopen(codepoints_url, timeout=15) as resp:
+                  for line in resp.read().decode("utf-8").splitlines():
+                      parts = line.strip().split()
+                      if len(parts) == 2:
+                          name_to_cp[parts[0]] = parts[1].upper()
+              print(f"Loaded {len(name_to_cp)} codepoints from Google.")
+          except Exception as e:
+              print(f"Warning: could not fetch codepoints map: {e}")
+
+          resolved = 0
+          missing = []
+          for name in all_icon_names:
+              cp = name_to_cp.get(name)
+              if cp:
+                  unicode_set.add(cp)
+                  resolved += 1
+              else:
+                  missing.append(name)
+
+          if missing:
+              print(f"Warning: no codepoint found for: {sorted(missing)}")
+          print(f"Resolved {resolved}/{len(all_icon_names)} icon names to codepoints.")
+          print(f"Total codepoints to subset: {len(unicode_set)}")
+
+          letter_range = "U+0061-U+007A,U+005F"
+          icon_unicodes = ",".join(f"U+{u}" for u in sorted(unicode_set))
+          unicodes_arg = f"{icon_unicodes},{letter_range}"
+
           urllib.request.urlretrieve(
-              "https://fonts.gstatic.com/s/materialsymbolsrounded/v325/sykO-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190FjpZIvLgyidOK7BDB_Qb9vUdV6_gjDK-P3JuEXX.woff2",
+              "https://fonts.gstatic.com/s/materialsymbolsrounded/v325/"
+              "sykO-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190FjpZIvLgyidOK7BDB_"
+              "Qb9vUdV6_gjDK-P3JuEXX.woff2",
               "base.woff2"
           )
-          
+
           os.makedirs("Theme/assets/font", exist_ok=True)
-          
+
           cmd = [
               "pyftsubset", "base.woff2",
               "--flavor=woff2",
               "--output-file=Theme/assets/font/material-symbols-jellyfin.woff2",
-              "--layout-features=liga,clig,rlig"
+              "--layout-features=liga,clig,rlig",
+              "--no-layout-closure",
+              f"--unicodes={unicodes_arg}",
           ]
-          
-          if unicodes_arg:
-              cmd.append(f"--unicodes={unicodes_arg}")
-          if text_arg:
-              cmd.append(f"--text={text_arg}")
-          
           subprocess.run(cmd, check=True)
+          print("Subset font written successfully.")
 
       - name: Commit and Push changes
         uses: stefanzweifel/git-auto-commit-action@v5
