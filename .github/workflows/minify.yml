@@ -1,0 +1,41 @@
+name: Auto-Minify Theme CSS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Theme/ElegantFin-theme-v*.css' # Only trigger when new versions are pushed
+
+jobs:
+  minify-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push the minified file back to the repo
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install clean-css-cli
+        run: npm install -g clean-css-cli
+
+      - name: Find Latest Version and Minify
+        run: |
+          # Finds the newest version based on filename sorting
+          LATEST_CSS=$(ls Theme/ElegantFin-theme-v*.css | sort -V | tail -n 1)
+          echo "Minifying $LATEST_CSS..."
+          
+          # Minifies and overwrites the build-latest-minified.css file
+          cleancss -o Theme/ElegantFin-jellyfin-theme-build-latest-minified.css "$LATEST_CSS"
+
+      - name: Commit Minified File
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-minify latest CSS theme"
+          file_pattern: 'Theme/ElegantFin-jellyfin-theme-build-latest-minified.css'

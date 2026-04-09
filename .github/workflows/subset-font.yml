@@ -1,0 +1,83 @@
+name: Generate Subset Font
+
+on:
+  # Trigger when the CSS file changes
+  push:
+    paths:
+      - 'Theme/ElegantFin-jellyfin-theme-build-latest-minified.css'
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to push changes back to the repo
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install fonttools brotli
+
+      - name: Parse CSS and Generate Subset Font
+        shell: python
+        run: |
+          import urllib.request
+          import re
+          import os
+          import subprocess
+          
+          # Read the local CSS file
+          css_path = "Theme/ElegantFin-jellyfin-theme-build-latest-minified.css"
+          with open(css_path, "r", encoding="utf-8") as f:
+              css_content = f.read()
+              
+          # Extract unicode values from CSS (e.g. content: "\e88e")
+          unicodes = set(re.findall(r'content\s*:\s*["\']\\([a-fA-F0-9]{4})["\']', css_content))
+          unicodes_arg = ",".join([f"U+{u.upper()}" for u in unicodes])
+          
+          # Extract text ligatures if any
+          words = set(re.findall(r'content\s*:\s*["\']([a-z_]{3,})["\']', css_content))
+          
+          # Add core Jellyfin icons to avoid breaking the UI
+          core_jellyfin_icons = [
+              "home", "settings", "search", "cast", "menu", "close", "play_arrow", 
+              "pause", "favorite", "star", "check", "info", "account_circle", 
+              "more_vert", "arrow_forward", "arrow_back", "logout", "person", "edit",
+              "delete", "refresh", "subtitles", "folder", "sort", "filter_list"
+          ]
+          words.update(core_jellyfin_icons)
+          text_arg = ",".join(words)
+          
+          # Download the base font
+          font_url = "https://fonts.gstatic.com/s/materialsymbolsrounded/v325/sykO-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190FjpZIvLgyidOK7BDB_Qb9vUdV6_gjDK-P3JuEXX.woff2"
+          urllib.request.urlretrieve(font_url, "base.woff2")
+          
+          # Make sure the output directory exists
+          os.makedirs("Theme/assets/font", exist_ok=True)
+          
+          # Subset the font
+          cmd = [
+              "pyftsubset", "base.woff2",
+              "--layout-features=*",
+              "--flavor=woff2",
+              "--output-file=Theme/assets/font/material-symbols-jellyfin.woff2"
+          ]
+          if unicodes_arg: cmd.append(f"--unicodes={unicodes_arg}")
+          if text_arg: cmd.append(f"--text={text_arg}")
+          
+          subprocess.run(cmd, check=True)
+          print("Subsetting completed successfully!")
+
+      - name: Commit and Push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-generate subset material-symbols-jellyfin.woff2"
+          file_pattern: "Theme/assets/font/material-symbols-jellyfin.woff2"
