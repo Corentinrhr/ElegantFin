@@ -12,7 +12,7 @@ jobs:
   minify-and-commit:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Needed to push the minified file back to the repo
+      contents: write
 
     steps:
       - name: Checkout Repository

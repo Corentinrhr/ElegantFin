@@ -48,7 +48,11 @@ jobs:
               "home", "settings", "search", "cast", "menu", "close", "play_arrow", 
               "pause", "favorite", "star", "check", "info", "account_circle", 
               "more_vert", "arrow_forward", "arrow_back", "logout", "person", "edit",
-              "delete", "refresh", "subtitles", "folder", "sort", "filter_list"
+              "delete", "refresh", "subtitles", "folder", "sort", "filter_list",
+              "volume_off", "volume_up", "volume_down", "volume_mute", 
+              "skip_next", "skip_previous", "fast_forward", "fast_rewind",
+              "fullscreen", "fullscreen_exit", "chevron_left", "chevron_right",
+              "keyboard_arrow_left", "keyboard_arrow_right", "closed_caption"
           ])
           
           # pyftsubset expects a flat char set
@@ -65,8 +69,7 @@ jobs:
               "pyftsubset", "base.woff2",
               "--flavor=woff2",
               "--output-file=Theme/assets/font/material-symbols-jellyfin.woff2",
-              "--layout-features=liga,clig,rlig",
-              "--no-layout-closure"
+              "--layout-features=liga,clig,rlig"
           ]
           
           if unicodes_arg:
