@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'Theme/ElegantFin-theme-v*.css' # Only trigger when new versions are pushed
+      - 'Theme/ElegantFin-theme-v*.css'
+  workflow_dispatch:
 
 jobs:
   minify-and-commit:

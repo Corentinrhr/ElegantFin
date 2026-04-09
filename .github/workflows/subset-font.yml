@@ -1,17 +1,19 @@
 name: Generate Subset Font
 
 on:
+  # Run this workflow after the CSS minification workflow completes
   workflow_run:
     workflows: ["Auto-Minify Theme CSS"]
     types:
       - completed
-  workflow_dispatch:
+  workflow_dispatch: 
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
-      contents: write # Required to push changes back to the repo
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -53,21 +55,25 @@ jobs:
               "delete", "refresh", "subtitles", "folder", "sort", "filter_list"
           ]
           words.update(core_jellyfin_icons)
-          text_arg = ",".join(words)
+          
+          # pyftsubset expects a string of unique characters, not comma-separated words
+          unique_chars = set("".join(words))
+          text_arg = "".join(unique_chars)
           
           # Download the base font
-          font_url = "https://fonts.gstatic.com/s/materialsymbolsrounded/v267/sykg-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190Fjzag.woff2"
+          font_url = "https://fonts.gstatic.com/s/materialsymbolsrounded/v325/sykO-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190FjpZIvLgyidOK7BDB_Qb9vUdV6_gjDK-P3JuEXX.woff2"
           urllib.request.urlretrieve(font_url, "base.woff2")
           
-          # Make sure the output directory exists
+          # Ensure the output directory exists
           os.makedirs("Theme/assets/font", exist_ok=True)
           
-          # Subset the font
+          # Subset the font with optimized flags
           cmd = [
               "pyftsubset", "base.woff2",
-              "--layout-features=*",
               "--flavor=woff2",
-              "--output-file=Theme/assets/font/material-symbols-jellyfin.woff2"
+              "--output-file=Theme/assets/font/material-symbols-jellyfin.woff2",
+              "--layout-features=liga,clig,rlig",
+              "--no-layout-closure"
           ]
           if unicodes_arg: cmd.append(f"--unicodes={unicodes_arg}")
           if text_arg: cmd.append(f"--text={text_arg}")
