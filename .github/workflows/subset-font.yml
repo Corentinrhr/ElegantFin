@@ -61,7 +61,7 @@ jobs:
           text_arg = "".join(unique_chars)
           
           # Download the base font
-          font_url = "https://fonts.gstatic.com/s/materialsymbolsrounded/v325/sykO-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190FjpZIvLgyidOK7BDB_Qb9vUdV6_gjDK-P3JuEXX.woff2"
+          font_url = "https://fonts.gstatic.com/s/materialsymbolsrounded/v267/sykg-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190Fjzag.woff2"
           urllib.request.urlretrieve(font_url, "base.woff2")
           
           # Ensure the output directory exists
